@@ -94,47 +94,138 @@ $$;
 
 grant execute on function public.find_owner_by_invite(text) to anon, authenticated;
 
+create or replace function public.current_owner_id()
+returns uuid
+language sql
+security definer
+set search_path = public
+as $$
+  select owner_id
+  from public.profiles
+  where id = auth.uid()
+  limit 1;
+$$;
+
+grant execute on function public.current_owner_id() to authenticated;
+
+create or replace function public.register_owner_account(
+  name_input text,
+  email_input text,
+  invite_token_input text
+)
+returns public.profiles
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  new_owner public.owners;
+  new_profile public.profiles;
+begin
+  if auth.uid() is null then
+    raise exception 'User is not authenticated.';
+  end if;
+
+  insert into public.owners (auth_user_id, name, email, invite_token)
+  values (auth.uid(), name_input, email_input, invite_token_input)
+  returning * into new_owner;
+
+  insert into public.profiles (id, owner_id, role, name, email)
+  values (auth.uid(), new_owner.id, 'owner', name_input, email_input)
+  returning * into new_profile;
+
+  return new_profile;
+end;
+$$;
+
+grant execute on function public.register_owner_account(text, text, text) to authenticated;
+
+create or replace function public.register_shopkeeper_account(
+  invite_token_input text,
+  name_input text,
+  email_input text,
+  shop_name_input text,
+  city_input text
+)
+returns public.profiles
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  invited_owner public.owners;
+  new_shop public.shops;
+  new_profile public.profiles;
+begin
+  if auth.uid() is null then
+    raise exception 'User is not authenticated.';
+  end if;
+
+  select *
+  into invited_owner
+  from public.owners
+  where invite_token = invite_token_input
+  limit 1;
+
+  if invited_owner.id is null then
+    raise exception 'Invite link is invalid.';
+  end if;
+
+  insert into public.shops (owner_id, name, city)
+  values (invited_owner.id, shop_name_input, city_input)
+  returning * into new_shop;
+
+  insert into public.profiles (id, owner_id, shop_id, role, name, email)
+  values (auth.uid(), invited_owner.id, new_shop.id, 'shopkeeper', name_input, email_input)
+  returning * into new_profile;
+
+  return new_profile;
+end;
+$$;
+
+grant execute on function public.register_shopkeeper_account(text, text, text, text, text) to authenticated;
+
 create policy "owners can create own owner row" on public.owners
   for insert to authenticated
   with check (auth_user_id = auth.uid());
 
 create policy "profiles see same owner" on public.profiles
-  for select using (owner_id in (select owner_id from public.profiles where id = auth.uid()));
+  for select using (owner_id = public.current_owner_id());
 
 create policy "profiles can create own profile" on public.profiles
   for insert to authenticated
   with check (id = auth.uid());
 
 create policy "owners see own owner row" on public.owners
-  for select using (id in (select owner_id from public.profiles where id = auth.uid()));
+  for select using (id = public.current_owner_id());
 
 create policy "same owner shops" on public.shops
-  for select using (owner_id in (select owner_id from public.profiles where id = auth.uid()));
+  for select using (owner_id = public.current_owner_id());
 
 create policy "authenticated users can create invited shops" on public.shops
   for insert to authenticated
   with check (auth.uid() is not null);
 
 create policy "same owner sales" on public.sales
-  for select using (owner_id in (select owner_id from public.profiles where id = auth.uid()));
+  for select using (owner_id = public.current_owner_id());
 
 create policy "same owner sales insert" on public.sales
   for insert to authenticated
-  with check (owner_id in (select owner_id from public.profiles where id = auth.uid()));
+  with check (owner_id = public.current_owner_id());
 
 create policy "same owner expenses" on public.expenses
-  for select using (owner_id in (select owner_id from public.profiles where id = auth.uid()));
+  for select using (owner_id = public.current_owner_id());
 
 create policy "same owner expenses insert" on public.expenses
   for insert to authenticated
-  with check (owner_id in (select owner_id from public.profiles where id = auth.uid()));
+  with check (owner_id = public.current_owner_id());
 
 create policy "same owner delivery payments" on public.delivery_payments
-  for select using (owner_id in (select owner_id from public.profiles where id = auth.uid()));
+  for select using (owner_id = public.current_owner_id());
 
 create policy "same owner delivery payments insert" on public.delivery_payments
   for insert to authenticated
-  with check (owner_id in (select owner_id from public.profiles where id = auth.uid()));
+  with check (owner_id = public.current_owner_id());
 
 create index sales_owner_shop_created_idx on public.sales (owner_id, shop_id, created_at desc);
 create index expenses_owner_shop_created_idx on public.expenses (owner_id, shop_id, created_at desc);

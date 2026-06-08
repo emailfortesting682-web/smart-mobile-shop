@@ -105,20 +105,14 @@ export async function cloudCreateOwner(name: string, email: string, password: st
   if (signUpError) throw new Error(signUpError.message);
   const authUser = authData.user;
   if (!authUser) throw new Error("Signup did not return a user. Disable email confirmation for the MVP test.");
-
-  const inviteToken = makeInviteToken();
-  const { data: ownerRow, error: ownerError } = await supabase
-    .from("owners")
-    .insert({ auth_user_id: authUser.id, name, email, invite_token: inviteToken })
-    .select("*")
-    .single<OwnerRow>();
-
-  if (ownerError || !ownerRow) throw new Error(ownerError?.message ?? "Could not create owner.");
+  if (!authData.session) throw new Error("Signup needs an active session. In Supabase Auth email settings, turn off Confirm email for MVP testing, then register with a new email.");
 
   const { data: profileRow, error: profileError } = await supabase
-    .from("profiles")
-    .insert({ id: authUser.id, owner_id: ownerRow.id, role: "owner", name, email })
-    .select("*")
+    .rpc("register_owner_account", {
+      name_input: name,
+      email_input: email,
+      invite_token_input: makeInviteToken()
+    })
     .single<ProfileRow>();
 
   if (profileError || !profileRow) throw new Error(profileError?.message ?? "Could not create owner profile.");
@@ -138,19 +132,16 @@ export async function cloudCreateShopkeeper(token: string, name: string, email: 
   if (signUpError) throw new Error(signUpError.message);
   const authUser = authData.user;
   if (!authUser) throw new Error("Signup did not return a user. Disable email confirmation for the MVP test.");
-
-  const { data: shopRow, error: shopError } = await supabase
-    .from("shops")
-    .insert({ owner_id: ownerRow.id, name: shopName, city })
-    .select("*")
-    .single<ShopRow>();
-
-  if (shopError || !shopRow) throw new Error(shopError?.message ?? "Could not create shop.");
+  if (!authData.session) throw new Error("Signup needs an active session. In Supabase Auth email settings, turn off Confirm email for MVP testing, then register with a new email.");
 
   const { data: profileRow, error: profileError } = await supabase
-    .from("profiles")
-    .insert({ id: authUser.id, owner_id: ownerRow.id, shop_id: shopRow.id, role: "shopkeeper", name, email })
-    .select("*")
+    .rpc("register_shopkeeper_account", {
+      invite_token_input: ownerRow.invite_token,
+      name_input: name,
+      email_input: email,
+      shop_name_input: shopName,
+      city_input: city
+    })
     .single<ProfileRow>();
 
   if (profileError || !profileRow) throw new Error(profileError?.message ?? "Could not create shopkeeper profile.");
