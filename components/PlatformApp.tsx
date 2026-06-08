@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import {
   ArrowRight,
   BarChart3,
+  BookOpen,
   Building2,
   CheckCircle2,
+  CircleHelp,
   CreditCard,
   Download,
   Euro,
@@ -60,6 +62,7 @@ export function PlatformApp({ inviteToken }: { inviteToken?: string }) {
   const [data, setData] = useState<AppData | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authMode, setAuthMode] = useState<AuthMode>(inviteToken ? "shopkeeper" : "login");
+  const [tourOpen, setTourOpen] = useState(false);
   const isCloud = cloudEnabled();
 
   useEffect(() => {
@@ -117,8 +120,17 @@ export function PlatformApp({ inviteToken }: { inviteToken?: string }) {
     if (isCloud) await cloudLogout();
     setCurrentUser(null);
     saveSession(null);
+    setTourOpen(false);
     setAuthMode("login");
   };
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const key = tourStorageKey(currentUser);
+    if (window.localStorage.getItem(key) !== "done") {
+      setTourOpen(true);
+    }
+  }, [currentUser]);
 
   if (!data) {
     return (
@@ -165,12 +177,21 @@ export function PlatformApp({ inviteToken }: { inviteToken?: string }) {
 
   return (
     <main className="min-h-screen">
-      <TopBar user={currentUser} data={data} onLogout={logout} />
+      <TopBar user={currentUser} data={data} onLogout={logout} onOpenTour={() => setTourOpen(true)} />
       {currentUser.role === "owner" ? (
         <OwnerDashboard data={data} user={currentUser} commit={commit} />
       ) : (
         <ShopkeeperWorkspace data={data} user={currentUser} commit={commit} cloudMode={isCloud} reloadCloud={reloadCloud} />
       )}
+      <OnboardingTour
+        user={currentUser}
+        open={tourOpen}
+        onClose={() => setTourOpen(false)}
+        onDontShowAgain={() => {
+          window.localStorage.setItem(tourStorageKey(currentUser), "done");
+          setTourOpen(false);
+        }}
+      />
     </main>
   );
 }
@@ -255,7 +276,10 @@ function AuthPanel({
 
         <section className="rounded-lg border border-line bg-white p-5 shadow-panel">
           <div className="mb-5">
-            <p className="text-sm font-semibold uppercase text-cobalt">Account access</p>
+            <p className="flex items-center gap-2 text-sm font-semibold uppercase text-cobalt">
+              Account access
+              <HelpTip text="Choose Login for existing users, Owner to create a business workspace, or Worker to join through an invite link." />
+            </p>
             <h2 className="mt-1 text-2xl font-semibold text-graphite">
               {mode === "login" ? "Welcome back" : mode === "owner" ? "Create owner account" : "Join an owner workspace"}
             </h2>
@@ -304,7 +328,7 @@ function AuthPanel({
   );
 }
 
-function TopBar({ user, data, onLogout }: { user: User; data: AppData; onLogout: () => void }) {
+function TopBar({ user, data, onLogout, onOpenTour }: { user: User; data: AppData; onLogout: () => void; onOpenTour: () => void }) {
   const shop = data.shops.find((item) => item.id === user.shopId);
   return (
     <header className="sticky top-0 z-10 border-b border-line bg-white/85 backdrop-blur-xl">
@@ -318,6 +342,10 @@ function TopBar({ user, data, onLogout }: { user: User; data: AppData; onLogout:
         </div>
         <div className="flex items-center gap-3">
           <span className="hidden text-sm font-semibold text-slate-600 sm:inline">{user.name}</span>
+          <button className="focus-ring inline-flex items-center gap-2 rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-graphite" onClick={onOpenTour}>
+            <BookOpen className="h-4 w-4" />
+            <span className="hidden sm:inline">Guided Tour</span>
+          </button>
           <button className="focus-ring rounded-md border border-line bg-white p-2 text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-graphite" onClick={onLogout} title="Logout">
             <LogOut className="h-5 w-5" />
           </button>
@@ -412,6 +440,150 @@ function PreviewMetric({ label, value, tone }: { label: string; value: string; t
   );
 }
 
+function OnboardingTour({
+  user,
+  open,
+  onClose,
+  onDontShowAgain
+}: {
+  user: User;
+  open: boolean;
+  onClose: () => void;
+  onDontShowAgain: () => void;
+}) {
+  const [step, setStep] = useState(0);
+  const steps = user.role === "owner" ? ownerTourSteps : shopkeeperTourSteps;
+  const current = steps[step];
+
+  useEffect(() => {
+    if (open) setStep(0);
+  }, [open, user.role]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
+      <section className="w-full max-w-2xl overflow-hidden rounded-lg border border-line bg-white shadow-panel">
+        <div className="border-b border-line bg-slate-50 px-5 py-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold uppercase text-cobalt">{user.role === "owner" ? "Owner guided tour" : "Shopkeeper guided tour"}</p>
+              <h2 className="mt-1 text-2xl font-semibold text-graphite">{current.title}</h2>
+            </div>
+            <div className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-slate-500 shadow-sm ring-1 ring-line">
+              {step + 1} / {steps.length}
+            </div>
+          </div>
+        </div>
+
+        <div className="px-5 py-5">
+          <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-lg bg-blue-50 text-cobalt">
+            {current.icon}
+          </div>
+          <p className="text-base leading-7 text-slate-600">{current.body}</p>
+          <div className="mt-6 flex gap-2">
+            {steps.map((_, index) => (
+              <span key={index} className={`h-1.5 flex-1 rounded-full ${index <= step ? "bg-cobalt" : "bg-slate-200"}`} />
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3 border-t border-line px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button className="focus-ring rounded-md border border-line bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-graphite" onClick={onClose}>
+              Skip Tutorial
+            </button>
+            <button className="focus-ring rounded-md border border-line bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-graphite" onClick={onDontShowAgain}>
+              Do Not Show Again
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <button
+              className="focus-ring rounded-md border border-line bg-white px-4 py-2 text-sm font-semibold text-graphite transition hover:border-slate-300 disabled:cursor-not-allowed disabled:opacity-45"
+              disabled={step === 0}
+              onClick={() => setStep((value) => Math.max(0, value - 1))}
+            >
+              Back
+            </button>
+            <button
+              className="focus-ring rounded-md bg-graphite px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
+              onClick={() => {
+                if (step === steps.length - 1) {
+                  onClose();
+                  return;
+                }
+                setStep((value) => value + 1);
+              }}
+            >
+              {step === steps.length - 1 ? "Finish" : "Next"}
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+const ownerTourSteps = [
+  {
+    title: "Start with the owner dashboard",
+    body: "This dashboard gives the owner a consolidated view of every connected shop. Totals, charts, and records update from the sales and payments submitted by shopkeepers.",
+    icon: <BarChart3 className="h-7 w-7" />
+  },
+  {
+    title: "Share the shopkeeper invite link",
+    body: "Copy the invitation link and send it to a worker. When the worker registers, their shop is attached under this owner account automatically.",
+    icon: <Users className="h-7 w-7" />
+  },
+  {
+    title: "Use filters to review performance",
+    body: "The date and shop filters control the totals, comparison chart, statistics, and recent records. Use them to review today, this month, or a single branch.",
+    icon: <TrendingUp className="h-7 w-7" />
+  },
+  {
+    title: "Understand cash in hand",
+    body: "Cash in hand is calculated from cash sales minus expenses and delivery payments. This helps the owner compare expected cash with physical cash in the shop.",
+    icon: <Euro className="h-7 w-7" />
+  },
+  {
+    title: "Export reports when needed",
+    body: "The CSV button downloads the filtered sales list in a format that opens in Excel. Use it for monthly review, sharing, or bookkeeping.",
+    icon: <Download className="h-7 w-7" />
+  }
+];
+
+const shopkeeperTourSteps = [
+  {
+    title: "Use the daily operations workspace",
+    body: "This page is designed for fast daily entry. Shopkeepers can record sales, expenses, and supplier payments from a phone, tablet, or computer.",
+    icon: <Store className="h-7 w-7" />
+  },
+  {
+    title: "Choose the correct module",
+    body: "Use Accessories for items like covers and chargers, Repairing for completed repairs, Telephones for phone sales, Expense for shop costs, and Delivery payment for supplier payments.",
+    icon: <Package className="h-7 w-7" />
+  },
+  {
+    title: "Enter price, quantity, and payment method",
+    body: "For sales, select or type the item details, set quantity and price, then choose Cash or Bancomat/Card. The total is calculated before saving.",
+    icon: <CreditCard className="h-7 w-7" />
+  },
+  {
+    title: "Save entries immediately",
+    body: "Press Save after each transaction. Once saved, the entry is added to the owner dashboard and included in today totals.",
+    icon: <CheckCircle2 className="h-7 w-7" />
+  },
+  {
+    title: "Use help icons anytime",
+    body: "Small question icons explain important fields and dashboard sections. The Guided Tour button in the header can reopen this tutorial whenever needed.",
+    icon: <CircleHelp className="h-7 w-7" />
+  }
+];
+
+function tourStorageKey(user: User) {
+  return `smart-mobile-shop-tour-${user.role}-${user.id}`;
+}
+
 function OwnerDashboard({ data, user, commit }: { data: AppData; user: User; commit: (data: AppData) => void }) {
   const [filter, setFilter] = useState<DateFilter>("today");
   const [selectedShopId, setSelectedShopId] = useState<string>("all");
@@ -462,27 +634,40 @@ function OwnerDashboard({ data, user, commit }: { data: AppData; user: User; com
     <section className="mx-auto max-w-7xl px-4 py-7">
       <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase text-cobalt">Workspace overview</p>
+          <p className="flex items-center gap-2 text-sm font-semibold uppercase text-cobalt">
+            Workspace overview
+            <HelpTip text="This dashboard combines sales, expenses, supplier payments, and cash position for the selected shops and date range." />
+          </p>
           <h1 className="mt-1 text-3xl font-semibold text-graphite">Owner dashboard</h1>
           <p className="mt-1 text-slate-600">Monitor shops, daily cash, card sales, expenses, and branch performance.</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <select className="focus-ring rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold text-graphite shadow-sm" value={filter} onChange={(event) => setFilter(event.target.value as DateFilter)}>
-            {dateFilters.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-          </select>
-          <select className="focus-ring rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold text-graphite shadow-sm" value={selectedShopId} onChange={(event) => setSelectedShopId(event.target.value)}>
-            <option value="all">All shops</option>
-            {shops.map((shop) => <option key={shop.id} value={shop.id}>{shop.name}</option>)}
-          </select>
-          <button className="focus-ring inline-flex items-center justify-center gap-2 rounded-md bg-graphite px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700" onClick={exportCsv}>
-            <Download className="h-4 w-4" />
-            CSV
-          </button>
+          <ControlWithHelp text="Change the reporting period used by the totals, chart, and records.">
+            <select className="focus-ring w-full rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold text-graphite shadow-sm" value={filter} onChange={(event) => setFilter(event.target.value as DateFilter)}>
+              {dateFilters.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+            </select>
+          </ControlWithHelp>
+          <ControlWithHelp text="View all branches together or focus the dashboard on one specific shop.">
+            <select className="focus-ring w-full rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold text-graphite shadow-sm" value={selectedShopId} onChange={(event) => setSelectedShopId(event.target.value)}>
+              <option value="all">All shops</option>
+              {shops.map((shop) => <option key={shop.id} value={shop.id}>{shop.name}</option>)}
+            </select>
+          </ControlWithHelp>
+          <div className="flex items-center gap-2">
+            <button className="focus-ring inline-flex items-center justify-center gap-2 rounded-md bg-graphite px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700" onClick={exportCsv}>
+              <Download className="h-4 w-4" />
+              CSV
+            </button>
+            <HelpTip text="Downloads the currently filtered sales list as a CSV file that can be opened in Excel." />
+          </div>
         </div>
       </div>
 
       <div className="mb-6 rounded-lg border border-line bg-white p-4 shadow-sm">
-        <p className="text-sm font-semibold uppercase text-slate-500">Shopkeeper invitation link</p>
+        <p className="flex items-center gap-2 text-sm font-semibold uppercase text-slate-500">
+          Shopkeeper invitation link
+          <HelpTip text="Send this link to a worker. When they register, their shop is automatically connected to this owner account." />
+        </p>
         <div className="mt-2 flex flex-col gap-2 md:flex-row">
           <input className="focus-ring w-full rounded-md border border-line bg-slate-50 px-3 py-2 text-sm font-semibold text-graphite" value={inviteUrl} readOnly />
           <button className="focus-ring rounded-md border border-line bg-white px-4 py-2 text-sm font-semibold text-graphite shadow-sm transition hover:border-slate-300" onClick={() => navigator.clipboard?.writeText(inviteUrl)}>Copy</button>
@@ -490,17 +675,20 @@ function OwnerDashboard({ data, user, commit }: { data: AppData; user: User; com
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-        <Metric icon={<Euro />} label="Total sales" value={formatMoney(summary.totalSales)} />
-        <Metric icon={<Euro />} label="Cash" value={formatMoney(summary.cashSales)} />
-        <Metric icon={<CreditCard />} label="Bancomat" value={formatMoney(summary.cardSales)} />
-        <Metric icon={<ReceiptText />} label="Expenses" value={formatMoney(summary.expenses)} />
-        <Metric icon={<Package />} label="Deliveries" value={formatMoney(summary.deliveryPayments)} />
-        <Metric icon={<Store />} label="Cash in hand" value={formatMoney(summary.cashInHand)} strong />
+        <Metric icon={<Euro />} label="Total sales" value={formatMoney(summary.totalSales)} help="Total revenue from accessories, repairs, and phone sales for the selected period." />
+        <Metric icon={<Euro />} label="Cash" value={formatMoney(summary.cashSales)} help="Sales paid in cash. This is used to calculate cash in hand." />
+        <Metric icon={<CreditCard />} label="Bancomat" value={formatMoney(summary.cardSales)} help="Sales paid by card or Bancomat." />
+        <Metric icon={<ReceiptText />} label="Expenses" value={formatMoney(summary.expenses)} help="Shop expenses such as fuel, cleaning, food, or utilities." />
+        <Metric icon={<Package />} label="Deliveries" value={formatMoney(summary.deliveryPayments)} help="Money paid to suppliers or for stock deliveries." />
+        <Metric icon={<Store />} label="Cash in hand" value={formatMoney(summary.cashInHand)} help="Cash sales minus expenses and supplier delivery payments." strong />
       </div>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
         <section className="rounded-lg border border-line bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-graphite">Branch comparison</h2>
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-graphite">
+            Branch comparison
+            <HelpTip text="Compares sales revenue between branches for the selected date filter." />
+          </h2>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
@@ -515,7 +703,10 @@ function OwnerDashboard({ data, user, commit }: { data: AppData; user: User; com
         </section>
 
         <section className="rounded-lg border border-line bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-graphite">Shop statistics</h2>
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-graphite">
+            Shop statistics
+            <HelpTip text="Breaks down revenue and counts by accessories, repairs, and telephone sales." />
+          </h2>
           <div className="grid gap-3">
             <MiniStat label="Accessories" value={formatMoney(summary.accessoriesRevenue)} detail={`${summary.accessoriesCount} items`} />
             <MiniStat label="Repairing" value={formatMoney(summary.repairRevenue)} detail={`${summary.repairsCount} repairs`} />
@@ -621,24 +812,27 @@ function ShopkeeperWorkspace({
   return (
     <section className="mx-auto max-w-7xl px-4 py-7">
       <div className="mb-6 flex flex-col gap-1">
-        <p className="text-sm font-semibold uppercase text-cobalt">Daily operations</p>
+        <p className="flex items-center gap-2 text-sm font-semibold uppercase text-cobalt">
+          Daily operations
+          <HelpTip text="Use this workspace to record sales, expenses, and supplier payments as they happen during the day." />
+        </p>
         <h1 className="text-3xl font-semibold text-graphite">{shop?.name ?? "Shop workspace"}</h1>
         <p className="text-slate-600">Enter sales and payments as they happen. Today cash in hand: <strong className="text-graphite">{formatMoney(summary.cashInHand)}</strong></p>
       </div>
 
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
-        <Metric icon={<Euro />} label="Today sales" value={formatMoney(summary.totalSales)} />
-        <Metric icon={<CreditCard />} label="Bancomat" value={formatMoney(summary.cardSales)} />
-        <Metric icon={<ReceiptText />} label="Expenses" value={formatMoney(summary.expenses + summary.deliveryPayments)} />
+        <Metric icon={<Euro />} label="Today sales" value={formatMoney(summary.totalSales)} help="All sales entered today for this shop." />
+        <Metric icon={<CreditCard />} label="Bancomat" value={formatMoney(summary.cardSales)} help="Today card/Bancomat payments for this shop." />
+        <Metric icon={<ReceiptText />} label="Expenses" value={formatMoney(summary.expenses + summary.deliveryPayments)} help="Today expenses plus supplier delivery payments." />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[280px_1fr]">
         <nav className="grid gap-2 self-start rounded-lg border border-line bg-white p-3 shadow-sm">
-          <EntryButton active={mode === "accessories"} icon={<Package />} label="Accessories" onClick={() => setMode("accessories")} />
-          <EntryButton active={mode === "repair"} icon={<Wrench />} label="Repairing" onClick={() => setMode("repair")} />
-          <EntryButton active={mode === "telephone"} icon={<Smartphone />} label="Telephones" onClick={() => setMode("telephone")} />
-          <EntryButton active={mode === "expense"} icon={<ReceiptText />} label="Expense / Spesa" onClick={() => setMode("expense")} />
-          <EntryButton active={mode === "delivery"} icon={<Building2 />} label="Delivery payment" onClick={() => setMode("delivery")} />
+          <EntryButton active={mode === "accessories"} icon={<Package />} label="Accessories" help="Record covers, chargers, cables, glass protectors, and other accessory sales." onClick={() => setMode("accessories")} />
+          <EntryButton active={mode === "repair"} icon={<Wrench />} label="Repairing" help="Record completed phone repairs with model, repair type, price, and payment method." onClick={() => setMode("repair")} />
+          <EntryButton active={mode === "telephone"} icon={<Smartphone />} label="Telephones" help="Record phone sales with brand, model, IMEI, storage, price, and payment method." onClick={() => setMode("telephone")} />
+          <EntryButton active={mode === "expense"} icon={<ReceiptText />} label="Expense / Spesa" help="Record shop expenses such as fuel, cleaning, food, or bills." onClick={() => setMode("expense")} />
+          <EntryButton active={mode === "delivery"} icon={<Building2 />} label="Delivery payment" help="Record money paid to suppliers or for stock deliveries." onClick={() => setMode("delivery")} />
         </nav>
 
         <section className="rounded-lg border border-line bg-white p-5 shadow-sm">
@@ -765,8 +959,14 @@ function EntryForm({ title, total, children, onSubmit }: { title: string; total:
       }}
     >
       <div className="flex flex-col gap-2 border-b border-line pb-4 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-xl font-semibold text-graphite">{title}</h2>
-        <div className="rounded-md bg-slate-100 px-4 py-2 text-lg font-semibold text-graphite">{formatMoney(total)}</div>
+        <h2 className="flex items-center gap-2 text-xl font-semibold text-graphite">
+          {title}
+          <HelpTip text="Fill the fields below and press Save to add this entry to the owner dashboard." />
+        </h2>
+        <div className="flex items-center gap-2 rounded-md bg-slate-100 px-4 py-2 text-lg font-semibold text-graphite">
+          {formatMoney(total)}
+          <HelpTip text="This is the calculated total amount that will be recorded." />
+        </div>
       </div>
       {children}
       <button className="focus-ring flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-mint px-4 py-3 text-lg font-semibold text-white shadow-sm transition hover:bg-teal-800">
@@ -782,7 +982,10 @@ function QuantityPrice({ quantity, setQuantity, unitPrice, setUnitPrice }: { qua
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <div>
-        <p className="mb-1 text-sm font-bold text-slate-600">Quantity</p>
+        <p className="mb-1 flex items-center gap-2 text-sm font-bold text-slate-600">
+          Quantity
+          <HelpTip text="Use plus and minus to record multiple units of the same item in one sale." />
+        </p>
         <div className="grid grid-cols-[56px_1fr_56px] overflow-hidden rounded-md border border-line bg-white">
           <button type="button" className="bg-slate-100 text-2xl font-semibold text-graphite transition hover:bg-slate-200" onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</button>
           <div className="flex items-center justify-center bg-white text-xl font-semibold text-graphite">{quantity}</div>
@@ -819,11 +1022,14 @@ function Field({ label, value, onChange, type = "text", required, placeholder }:
   );
 }
 
-function Metric({ icon, label, value, strong }: { icon: React.ReactNode; label: string; value: string; strong?: boolean }) {
+function Metric({ icon, label, value, help, strong }: { icon: React.ReactNode; label: string; value: string; help?: string; strong?: boolean }) {
   return (
     <div className={`rounded-lg border border-line bg-white p-4 shadow-sm ${strong ? "ring-1 ring-cobalt/20" : ""}`}>
       <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-md bg-blue-50 text-cobalt">{icon}</div>
-      <p className="text-sm font-semibold text-slate-500">{label}</p>
+      <p className="flex items-center gap-2 text-sm font-semibold text-slate-500">
+        {label}
+        {help && <HelpTip text={help} />}
+      </p>
       <p className="mt-1 break-words text-2xl font-semibold text-graphite">{value}</p>
     </div>
   );
@@ -862,14 +1068,47 @@ function RecordsTable({ title, rows }: { title: string; rows: string[][] }) {
   );
 }
 
-function EntryButton({ active, icon, label, onClick }: { active: boolean; icon: React.ReactNode; label: string; onClick: () => void }) {
+function EntryButton({ active, icon, label, help, onClick }: { active: boolean; icon: React.ReactNode; label: string; help: string; onClick: () => void }) {
   return (
-    <button className={`focus-ring flex min-h-14 items-center gap-3 rounded-md px-3 py-3 text-left font-semibold transition ${
+    <div className={`flex min-h-14 items-center gap-2 rounded-md px-3 py-3 transition ${
       active ? "bg-graphite text-white shadow-sm" : "bg-white text-graphite hover:bg-slate-50"
-    }`} onClick={onClick}>
-      {icon}
-      {label}
-    </button>
+    }`}>
+      <button className="focus-ring flex flex-1 items-center gap-3 text-left font-semibold" onClick={onClick}>
+        {icon}
+        {label}
+      </button>
+      <HelpTip text={help} invert={active} />
+    </div>
+  );
+}
+
+function ControlWithHelp({ children, text }: { children: React.ReactNode; text: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="min-w-0 flex-1">{children}</div>
+      <HelpTip text={text} />
+    </div>
+  );
+}
+
+function HelpTip({ text, invert }: { text: string; invert?: boolean }) {
+  return (
+    <span className="group/help relative inline-flex align-middle">
+      <button
+        type="button"
+        className={`focus-ring inline-flex h-5 w-5 items-center justify-center rounded-full border text-[11px] transition ${
+          invert
+            ? "border-white/30 text-white/80 hover:bg-white/10 hover:text-white"
+            : "border-slate-300 bg-white text-slate-500 hover:border-cobalt hover:text-cobalt"
+        }`}
+        aria-label="Help"
+      >
+        <CircleHelp className="h-3.5 w-3.5" />
+      </button>
+      <span className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 w-64 -translate-x-1/2 rounded-md border border-line bg-graphite px-3 py-2 text-left text-xs font-medium leading-5 text-white opacity-0 shadow-panel transition group-hover/help:opacity-100 group-focus-within/help:opacity-100">
+        {text}
+      </span>
+    </span>
   );
 }
 
