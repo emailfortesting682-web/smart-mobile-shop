@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  ArrowRight,
   BarChart3,
   Building2,
+  CheckCircle2,
   CreditCard,
   Download,
   Euro,
@@ -12,8 +14,11 @@ import {
   Plus,
   ReceiptText,
   RefreshCw,
+  ShieldCheck,
   Smartphone,
   Store,
+  TrendingUp,
+  Users,
   Wrench
 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -219,63 +224,82 @@ function AuthPanel({
   };
 
   return (
-    <main className="mx-auto grid min-h-screen w-full max-w-6xl items-center gap-8 px-4 py-8 lg:grid-cols-[1fr_440px]">
-      <section>
-        <div className="mb-8 inline-flex items-center gap-2 rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold text-ink shadow-sm">
-          <Store className="h-4 w-4 text-mint" />
-          Smart Mobile Shop
+    <main className="min-h-screen px-4 py-5 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-7xl items-center justify-between">
+        <BrandLockup />
+        <div className="hidden items-center gap-2 text-sm font-semibold text-slate-500 sm:flex">
+          <ShieldCheck className="h-4 w-4 text-mint" />
+          Secure branch operations
         </div>
-        <h1 className="max-w-3xl text-4xl font-bold tracking-normal text-ink sm:text-5xl">
-          Online branch management for mobile shops.
-        </h1>
-        <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
-          Owners create an account, invite shopkeepers, and monitor daily sales, expenses, supplier payments, and branch performance from one dashboard.
-        </p>
-        <div className="mt-8 grid gap-3 sm:grid-cols-3">
-          <Feature icon={<Building2 />} title="Owner hierarchy" />
-          <Feature icon={<ReceiptText />} title="Daily entries" />
-          <Feature icon={<BarChart3 />} title="Reports" />
-        </div>
-      </section>
+      </div>
 
-      <section className="rounded-lg border border-line bg-white p-5 shadow-soft">
-        <div className="mb-4 grid grid-cols-3 rounded-md bg-mist p-1 text-sm font-semibold">
-          <button className={tabClass(mode === "login")} onClick={() => onMode("login")}>Login</button>
-          <button className={tabClass(mode === "owner")} onClick={() => onMode("owner")}>Owner</button>
-          <button className={tabClass(mode === "shopkeeper")} onClick={() => onMode("shopkeeper")}>Shopkeeper</button>
-        </div>
-
-        <form className="space-y-4" onSubmit={submit}>
-          {mode !== "login" && (
-            <Field label="Full name" value={form.name} onChange={(value) => setForm({ ...form, name: value })} required />
-          )}
-          {mode === "shopkeeper" && (
-            <>
-              <Field label="Invitation token" value={form.token} onChange={(value) => setForm({ ...form, token: value })} required />
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Shop name" value={form.shopName} onChange={(value) => setForm({ ...form, shopName: value })} required />
-                <Field label="City" value={form.city} onChange={(value) => setForm({ ...form, city: value })} required />
-              </div>
-            </>
-          )}
-          <Field label="Email" type="email" value={form.email} onChange={(value) => setForm({ ...form, email: value })} required />
-          <Field label="Password" type="password" value={form.password} onChange={(value) => setForm({ ...form, password: value })} required />
-          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm font-semibold text-coral">{error}</p>}
-          <button className="focus-ring flex w-full items-center justify-center rounded-md bg-ink px-4 py-3 font-bold text-white transition hover:bg-slate-800">
-            {mode === "login" ? "Login" : "Create account"}
-          </button>
-        </form>
-
-        {!cloudMode && (
-          <div className="mt-5 rounded-md bg-mist p-3 text-sm text-slate-600">
-            Demo owner: <strong>owner@demo.com</strong> / <strong>demo123</strong>
-            <br />
-            Demo shopkeeper: <strong>shop@demo.com</strong> / <strong>demo123</strong>
-            <br />
-            Demo invite token: <strong>{data.owners[0]?.inviteToken}</strong>
+      <div className="mx-auto grid min-h-[calc(100vh-76px)] w-full max-w-7xl items-center gap-10 py-8 lg:grid-cols-[1.1fr_440px] xl:gap-16">
+        <section className="max-w-3xl">
+          <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1.5 text-sm font-semibold text-slate-600 shadow-sm">
+            <span className="h-2 w-2 rounded-full bg-mint" />
+            Built for multi-shop mobile retailers
           </div>
-        )}
-      </section>
+          <h1 className="text-4xl font-semibold leading-tight tracking-normal text-graphite sm:text-5xl lg:text-[56px]">
+            See sales, cash, and expenses for every shop in one calm workspace.
+          </h1>
+          <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
+            Owners invite shopkeepers, teams enter daily transactions from any device, and branch performance stays organized without paper registers.
+          </p>
+          <div className="mt-8 grid gap-3 sm:grid-cols-3">
+            <Feature icon={<Users />} title="Invite teams" />
+            <Feature icon={<ReceiptText />} title="Capture sales" />
+            <Feature icon={<TrendingUp />} title="Track performance" />
+          </div>
+          <DashboardPreview />
+        </section>
+
+        <section className="rounded-lg border border-line bg-white p-5 shadow-panel">
+          <div className="mb-5">
+            <p className="text-sm font-semibold uppercase text-cobalt">Account access</p>
+            <h2 className="mt-1 text-2xl font-semibold text-graphite">
+              {mode === "login" ? "Welcome back" : mode === "owner" ? "Create owner account" : "Join an owner workspace"}
+            </h2>
+          </div>
+
+          <div className="mb-5 grid grid-cols-3 rounded-md bg-slate-100 p-1 text-sm font-semibold">
+            <button className={tabClass(mode === "login")} onClick={() => onMode("login")}>Login</button>
+            <button className={tabClass(mode === "owner")} onClick={() => onMode("owner")}>Owner</button>
+            <button className={tabClass(mode === "shopkeeper")} onClick={() => onMode("shopkeeper")}>Worker</button>
+          </div>
+
+          <form className="space-y-4" onSubmit={submit}>
+            {mode !== "login" && (
+              <Field label="Full name" value={form.name} onChange={(value) => setForm({ ...form, name: value })} required />
+            )}
+            {mode === "shopkeeper" && (
+              <>
+                <Field label="Invitation token" value={form.token} onChange={(value) => setForm({ ...form, token: value })} required />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Shop name" value={form.shopName} onChange={(value) => setForm({ ...form, shopName: value })} required />
+                  <Field label="City" value={form.city} onChange={(value) => setForm({ ...form, city: value })} required />
+                </div>
+              </>
+            )}
+            <Field label="Email" type="email" value={form.email} onChange={(value) => setForm({ ...form, email: value })} required />
+            <Field label="Password" type="password" value={form.password} onChange={(value) => setForm({ ...form, password: value })} required />
+            {error && <p className="rounded-md border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-semibold text-coral">{error}</p>}
+            <button className="focus-ring flex w-full items-center justify-center gap-2 rounded-md bg-graphite px-4 py-3 font-semibold text-white transition hover:bg-slate-700">
+              {mode === "login" ? "Login" : "Create account"}
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </form>
+
+          {!cloudMode && (
+            <div className="mt-5 rounded-md border border-line bg-slate-50 p-3 text-sm leading-6 text-slate-600">
+              Demo owner: <strong>owner@demo.com</strong> / <strong>demo123</strong>
+              <br />
+              Demo shopkeeper: <strong>shop@demo.com</strong> / <strong>demo123</strong>
+              <br />
+              Demo invite token: <strong>{data.owners[0]?.inviteToken}</strong>
+            </div>
+          )}
+        </section>
+      </div>
     </main>
   );
 }
@@ -283,25 +307,108 @@ function AuthPanel({
 function TopBar({ user, data, onLogout }: { user: User; data: AppData; onLogout: () => void }) {
   const shop = data.shops.find((item) => item.id === user.shopId);
   return (
-    <header className="sticky top-0 z-10 border-b border-line bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-10 border-b border-line bg-white/85 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-ink text-white">
-            <Store className="h-5 w-5" />
-          </div>
+          <BrandMark />
           <div>
-            <p className="font-bold text-ink">Smart Mobile Shop</p>
+            <p className="font-semibold text-graphite">Smart Mobile Shop</p>
             <p className="text-sm text-slate-500">{user.role === "owner" ? "Owner dashboard" : shop?.name ?? "Shopkeeper workspace"}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <span className="hidden text-sm font-semibold text-slate-600 sm:inline">{user.name}</span>
-          <button className="focus-ring rounded-md border border-line bg-white p-2 text-slate-600 hover:text-ink" onClick={onLogout} title="Logout">
+          <button className="focus-ring rounded-md border border-line bg-white p-2 text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-graphite" onClick={onLogout} title="Logout">
             <LogOut className="h-5 w-5" />
           </button>
         </div>
       </div>
     </header>
+  );
+}
+
+function BrandLockup() {
+  return (
+    <div className="flex items-center gap-3">
+      <BrandMark />
+      <div>
+        <p className="text-base font-semibold text-graphite">Smart Mobile Shop</p>
+        <p className="text-xs font-semibold uppercase text-slate-500">Branch management</p>
+      </div>
+    </div>
+  );
+}
+
+function BrandMark() {
+  return (
+    <div className="grid h-10 w-10 grid-cols-2 grid-rows-2 gap-0.5 rounded-md bg-white p-1 shadow-sm ring-1 ring-line">
+      <span className="rounded-sm bg-cobalt" />
+      <span className="rounded-sm bg-mint" />
+      <span className="rounded-sm bg-amber" />
+      <span className="rounded-sm bg-graphite" />
+    </div>
+  );
+}
+
+function DashboardPreview() {
+  return (
+    <div className="mt-10 max-w-2xl overflow-hidden rounded-lg border border-line bg-white shadow-panel">
+      <div className="flex items-center justify-between border-b border-line px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full bg-coral" />
+          <span className="h-2.5 w-2.5 rounded-full bg-amber" />
+          <span className="h-2.5 w-2.5 rounded-full bg-mint" />
+        </div>
+        <p className="text-xs font-semibold text-slate-500">Live owner dashboard</p>
+      </div>
+      <div className="grid gap-4 p-4 sm:grid-cols-[1fr_190px]">
+        <div>
+          <div className="mb-4 grid grid-cols-3 gap-3">
+            <PreviewMetric label="Today" value="EUR 4,250" tone="bg-blue-50 text-cobalt" />
+            <PreviewMetric label="Cash" value="EUR 2,300" tone="bg-emerald-50 text-mint" />
+            <PreviewMetric label="Card" value="EUR 1,950" tone="bg-orange-50 text-amber" />
+          </div>
+          <div className="flex h-36 items-end gap-2 rounded-md bg-slate-50 px-4 py-3">
+            {[56, 42, 75, 62, 88, 48, 69].map((height, index) => (
+              <span
+                key={index}
+                className="w-full rounded-t-sm bg-cobalt/80"
+                style={{ height: `${height}%`, opacity: 0.55 + index * 0.05 }}
+              />
+            ))}
+          </div>
+        </div>
+        <div className="rounded-md border border-line p-3">
+          <p className="text-sm font-semibold text-graphite">Branch health</p>
+          <div className="mt-3 space-y-3">
+            {["Milano 1", "Milano 2", "Roma 1"].map((name, index) => (
+              <div key={name}>
+                <div className="mb-1 flex justify-between text-xs font-semibold text-slate-500">
+                  <span>{name}</span>
+                  <span>{[92, 78, 64][index]}%</span>
+                </div>
+                <div className="h-2 rounded-full bg-slate-100">
+                  <div className="h-2 rounded-full bg-mint" style={{ width: `${[92, 78, 64][index]}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 flex items-center gap-2 rounded-md bg-slate-50 p-2 text-xs font-semibold text-slate-600">
+            <CheckCircle2 className="h-4 w-4 text-mint" />
+            Monthly summary ready
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PreviewMetric({ label, value, tone }: { label: string; value: string; tone: string }) {
+  return (
+    <div className="rounded-md border border-line bg-white p-3">
+      <p className="text-xs font-semibold text-slate-500">{label}</p>
+      <p className={`mt-1 rounded-sm px-2 py-1 text-sm font-semibold ${tone}`}>{value}</p>
+    </div>
   );
 }
 
@@ -352,32 +459,33 @@ function OwnerDashboard({ data, user, commit }: { data: AppData; user: User; com
   };
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-6">
-      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <section className="mx-auto max-w-7xl px-4 py-7">
+      <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-ink">Owner dashboard</h1>
-          <p className="mt-1 text-slate-600">Monitor all shops, daily cash, card sales, expenses, and branch performance.</p>
+          <p className="text-sm font-semibold uppercase text-cobalt">Workspace overview</p>
+          <h1 className="mt-1 text-3xl font-semibold text-graphite">Owner dashboard</h1>
+          <p className="mt-1 text-slate-600">Monitor shops, daily cash, card sales, expenses, and branch performance.</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <select className="focus-ring rounded-md border border-line bg-white px-3 py-2 font-semibold" value={filter} onChange={(event) => setFilter(event.target.value as DateFilter)}>
+          <select className="focus-ring rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold text-graphite shadow-sm" value={filter} onChange={(event) => setFilter(event.target.value as DateFilter)}>
             {dateFilters.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
           </select>
-          <select className="focus-ring rounded-md border border-line bg-white px-3 py-2 font-semibold" value={selectedShopId} onChange={(event) => setSelectedShopId(event.target.value)}>
+          <select className="focus-ring rounded-md border border-line bg-white px-3 py-2 text-sm font-semibold text-graphite shadow-sm" value={selectedShopId} onChange={(event) => setSelectedShopId(event.target.value)}>
             <option value="all">All shops</option>
             {shops.map((shop) => <option key={shop.id} value={shop.id}>{shop.name}</option>)}
           </select>
-          <button className="focus-ring inline-flex items-center justify-center gap-2 rounded-md bg-ink px-4 py-2 font-bold text-white" onClick={exportCsv}>
+          <button className="focus-ring inline-flex items-center justify-center gap-2 rounded-md bg-graphite px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700" onClick={exportCsv}>
             <Download className="h-4 w-4" />
             CSV
           </button>
         </div>
       </div>
 
-      <div className="mb-6 rounded-lg border border-line bg-white p-4">
-        <p className="text-sm font-bold uppercase tracking-normal text-slate-500">Shopkeeper invitation link</p>
+      <div className="mb-6 rounded-lg border border-line bg-white p-4 shadow-sm">
+        <p className="text-sm font-semibold uppercase text-slate-500">Shopkeeper invitation link</p>
         <div className="mt-2 flex flex-col gap-2 md:flex-row">
-          <input className="focus-ring w-full rounded-md border border-line bg-mist px-3 py-2 font-semibold text-ink" value={inviteUrl} readOnly />
-          <button className="focus-ring rounded-md border border-line px-4 py-2 font-bold text-ink" onClick={() => navigator.clipboard?.writeText(inviteUrl)}>Copy</button>
+          <input className="focus-ring w-full rounded-md border border-line bg-slate-50 px-3 py-2 text-sm font-semibold text-graphite" value={inviteUrl} readOnly />
+          <button className="focus-ring rounded-md border border-line bg-white px-4 py-2 text-sm font-semibold text-graphite shadow-sm transition hover:border-slate-300" onClick={() => navigator.clipboard?.writeText(inviteUrl)}>Copy</button>
         </div>
       </div>
 
@@ -391,23 +499,23 @@ function OwnerDashboard({ data, user, commit }: { data: AppData; user: User; com
       </div>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
-        <section className="rounded-lg border border-line bg-white p-4">
-          <h2 className="mb-4 text-lg font-bold text-ink">Branch comparison</h2>
+        <section className="rounded-lg border border-line bg-white p-5 shadow-sm">
+          <h2 className="mb-4 text-lg font-semibold text-graphite">Branch comparison</h2>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#d9e1e5" />
                 <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tickFormatter={(value) => `€${value}`} tick={{ fontSize: 12 }} />
+                <YAxis tickFormatter={(value) => `EUR ${value}`} tick={{ fontSize: 12 }} />
                 <Tooltip formatter={(value) => formatMoney(Number(value))} />
-                <Bar dataKey="sales" fill="#2f9d78" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="sales" fill="#2563eb" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </section>
 
-        <section className="rounded-lg border border-line bg-white p-4">
-          <h2 className="mb-4 text-lg font-bold text-ink">Shop statistics</h2>
+        <section className="rounded-lg border border-line bg-white p-5 shadow-sm">
+          <h2 className="mb-4 text-lg font-semibold text-graphite">Shop statistics</h2>
           <div className="grid gap-3">
             <MiniStat label="Accessories" value={formatMoney(summary.accessoriesRevenue)} detail={`${summary.accessoriesCount} items`} />
             <MiniStat label="Repairing" value={formatMoney(summary.repairRevenue)} detail={`${summary.repairsCount} repairs`} />
@@ -511,20 +619,21 @@ function ShopkeeperWorkspace({
   };
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-6">
-      <div className="mb-5 flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-ink">{shop?.name ?? "Shop workspace"}</h1>
-        <p className="text-slate-600">Enter sales and payments as they happen. Today cash in hand: <strong>{formatMoney(summary.cashInHand)}</strong></p>
+    <section className="mx-auto max-w-7xl px-4 py-7">
+      <div className="mb-6 flex flex-col gap-1">
+        <p className="text-sm font-semibold uppercase text-cobalt">Daily operations</p>
+        <h1 className="text-3xl font-semibold text-graphite">{shop?.name ?? "Shop workspace"}</h1>
+        <p className="text-slate-600">Enter sales and payments as they happen. Today cash in hand: <strong className="text-graphite">{formatMoney(summary.cashInHand)}</strong></p>
       </div>
 
-      <div className="mb-5 grid gap-3 sm:grid-cols-3">
+      <div className="mb-6 grid gap-3 sm:grid-cols-3">
         <Metric icon={<Euro />} label="Today sales" value={formatMoney(summary.totalSales)} />
         <Metric icon={<CreditCard />} label="Bancomat" value={formatMoney(summary.cardSales)} />
         <Metric icon={<ReceiptText />} label="Expenses" value={formatMoney(summary.expenses + summary.deliveryPayments)} />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[280px_1fr]">
-        <nav className="grid gap-3 self-start rounded-lg border border-line bg-white p-3">
+        <nav className="grid gap-2 self-start rounded-lg border border-line bg-white p-3 shadow-sm">
           <EntryButton active={mode === "accessories"} icon={<Package />} label="Accessories" onClick={() => setMode("accessories")} />
           <EntryButton active={mode === "repair"} icon={<Wrench />} label="Repairing" onClick={() => setMode("repair")} />
           <EntryButton active={mode === "telephone"} icon={<Smartphone />} label="Telephones" onClick={() => setMode("telephone")} />
@@ -532,7 +641,7 @@ function ShopkeeperWorkspace({
           <EntryButton active={mode === "delivery"} icon={<Building2 />} label="Delivery payment" onClick={() => setMode("delivery")} />
         </nav>
 
-        <section className="rounded-lg border border-line bg-white p-4 shadow-sm">
+        <section className="rounded-lg border border-line bg-white p-5 shadow-sm">
           {mode === "accessories" && <AccessoriesForm onSubmit={(values) => addSale("accessories", values)} />}
           {mode === "repair" && <RepairForm onSubmit={(values) => addSale("repair", values)} />}
           {mode === "telephone" && <TelephoneForm onSubmit={(values) => addSale("telephone", values)} />}
@@ -656,15 +765,15 @@ function EntryForm({ title, total, children, onSubmit }: { title: string; total:
       }}
     >
       <div className="flex flex-col gap-2 border-b border-line pb-4 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-xl font-bold text-ink">{title}</h2>
-        <div className="rounded-md bg-mist px-4 py-2 text-lg font-black text-ink">{formatMoney(total)}</div>
+        <h2 className="text-xl font-semibold text-graphite">{title}</h2>
+        <div className="rounded-md bg-slate-100 px-4 py-2 text-lg font-semibold text-graphite">{formatMoney(total)}</div>
       </div>
       {children}
-      <button className="focus-ring flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-mint px-4 py-3 text-lg font-black text-white transition hover:bg-emerald-700">
+      <button className="focus-ring flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-mint px-4 py-3 text-lg font-semibold text-white shadow-sm transition hover:bg-teal-800">
         <Plus className="h-5 w-5" />
         Save
       </button>
-      {saved && <p className="rounded-md bg-emerald-50 px-3 py-2 text-center font-bold text-mint">Saved successfully.</p>}
+      {saved && <p className="rounded-md border border-emerald-100 bg-emerald-50 px-3 py-2 text-center font-semibold text-mint">Saved successfully.</p>}
     </form>
   );
 }
@@ -674,10 +783,10 @@ function QuantityPrice({ quantity, setQuantity, unitPrice, setUnitPrice }: { qua
     <div className="grid gap-4 md:grid-cols-2">
       <div>
         <p className="mb-1 text-sm font-bold text-slate-600">Quantity</p>
-        <div className="grid grid-cols-[56px_1fr_56px] overflow-hidden rounded-md border border-line">
-          <button type="button" className="bg-mist text-2xl font-black" onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</button>
-          <div className="flex items-center justify-center bg-white text-xl font-black">{quantity}</div>
-          <button type="button" className="bg-mist text-2xl font-black" onClick={() => setQuantity(quantity + 1)}>+</button>
+        <div className="grid grid-cols-[56px_1fr_56px] overflow-hidden rounded-md border border-line bg-white">
+          <button type="button" className="bg-slate-100 text-2xl font-semibold text-graphite transition hover:bg-slate-200" onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</button>
+          <div className="flex items-center justify-center bg-white text-xl font-semibold text-graphite">{quantity}</div>
+          <button type="button" className="bg-slate-100 text-2xl font-semibold text-graphite transition hover:bg-slate-200" onClick={() => setQuantity(quantity + 1)}>+</button>
         </div>
       </div>
       <Field label="Selling price" type="number" value={String(unitPrice)} onChange={(value) => setUnitPrice(Number(value))} required />
@@ -699,7 +808,7 @@ function Field({ label, value, onChange, type = "text", required, placeholder }:
     <label className="grid gap-1 text-sm font-bold text-slate-600">
       {label}
       <input
-        className="focus-ring rounded-md border border-line bg-white px-3 py-3 text-base text-ink"
+        className="focus-ring rounded-md border border-line bg-white px-3 py-3 text-base text-graphite shadow-sm transition placeholder:text-slate-400 hover:border-slate-300"
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
@@ -712,20 +821,20 @@ function Field({ label, value, onChange, type = "text", required, placeholder }:
 
 function Metric({ icon, label, value, strong }: { icon: React.ReactNode; label: string; value: string; strong?: boolean }) {
   return (
-    <div className={`rounded-lg border border-line bg-white p-4 ${strong ? "shadow-soft" : ""}`}>
-      <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-md bg-mist text-mint">{icon}</div>
-      <p className="text-sm font-bold text-slate-500">{label}</p>
-      <p className="mt-1 break-words text-2xl font-black text-ink">{value}</p>
+    <div className={`rounded-lg border border-line bg-white p-4 shadow-sm ${strong ? "ring-1 ring-cobalt/20" : ""}`}>
+      <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-md bg-blue-50 text-cobalt">{icon}</div>
+      <p className="text-sm font-semibold text-slate-500">{label}</p>
+      <p className="mt-1 break-words text-2xl font-semibold text-graphite">{value}</p>
     </div>
   );
 }
 
 function MiniStat({ label, value, detail }: { label: string; value: string; detail: string }) {
   return (
-    <div className="rounded-md border border-line p-3">
+    <div className="rounded-md border border-line bg-slate-50/60 p-3">
       <div className="flex items-center justify-between gap-3">
-        <p className="font-bold text-ink">{label}</p>
-        <p className="font-black text-mint">{value}</p>
+        <p className="font-semibold text-graphite">{label}</p>
+        <p className="font-semibold text-cobalt">{value}</p>
       </div>
       <p className="mt-1 text-sm text-slate-500">{detail}</p>
     </div>
@@ -734,15 +843,15 @@ function MiniStat({ label, value, detail }: { label: string; value: string; deta
 
 function RecordsTable({ title, rows }: { title: string; rows: string[][] }) {
   return (
-    <section className="overflow-hidden rounded-lg border border-line bg-white">
-      <h2 className="border-b border-line px-4 py-3 text-lg font-bold text-ink">{title}</h2>
+    <section className="overflow-hidden rounded-lg border border-line bg-white shadow-sm">
+      <h2 className="border-b border-line px-4 py-3 text-lg font-semibold text-graphite">{title}</h2>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[620px] text-left text-sm">
           <tbody>
             {rows.length === 0 ? (
               <tr><td className="px-4 py-6 text-slate-500">No records for this filter.</td></tr>
             ) : rows.map((row, index) => (
-              <tr key={index} className="border-b border-line last:border-0">
+              <tr key={index} className="border-b border-line transition hover:bg-slate-50 last:border-0">
                 {row.map((cell, cellIndex) => <td key={cellIndex} className="px-4 py-3 text-slate-700">{cell}</td>)}
               </tr>
             ))}
@@ -755,7 +864,9 @@ function RecordsTable({ title, rows }: { title: string; rows: string[][] }) {
 
 function EntryButton({ active, icon, label, onClick }: { active: boolean; icon: React.ReactNode; label: string; onClick: () => void }) {
   return (
-    <button className={`focus-ring flex min-h-14 items-center gap-3 rounded-md px-3 py-3 text-left font-bold transition ${active ? "bg-ink text-white" : "bg-mist text-ink hover:bg-slate-200"}`} onClick={onClick}>
+    <button className={`focus-ring flex min-h-14 items-center gap-3 rounded-md px-3 py-3 text-left font-semibold transition ${
+      active ? "bg-graphite text-white shadow-sm" : "bg-white text-graphite hover:bg-slate-50"
+    }`} onClick={onClick}>
       {icon}
       {label}
     </button>
@@ -765,18 +876,19 @@ function EntryButton({ active, icon, label, onClick }: { active: boolean; icon: 
 function Feature({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
     <div className="flex items-center gap-3 rounded-lg border border-line bg-white p-4 shadow-sm">
-      <div className="text-mint">{icon}</div>
-      <p className="font-bold text-ink">{title}</p>
+      <div className="text-cobalt">{icon}</div>
+      <p className="font-semibold text-graphite">{title}</p>
     </div>
   );
 }
 
 function tabClass(active: boolean) {
-  return `focus-ring rounded px-3 py-2 transition ${active ? "bg-white text-ink shadow-sm" : "text-slate-500 hover:text-ink"}`;
+  return `focus-ring rounded px-3 py-2 transition ${active ? "bg-white text-graphite shadow-sm" : "text-slate-500 hover:text-graphite"}`;
 }
 
 function choiceClass(active: boolean) {
-  return `focus-ring min-h-14 rounded-md border px-3 py-3 text-center font-black transition ${
-    active ? "border-mint bg-emerald-50 text-mint" : "border-line bg-white text-ink hover:border-slate-400"
+  return `focus-ring min-h-14 rounded-md border px-3 py-3 text-center font-semibold transition ${
+    active ? "border-cobalt bg-blue-50 text-cobalt" : "border-line bg-white text-graphite hover:border-slate-400"
   }`;
 }
+

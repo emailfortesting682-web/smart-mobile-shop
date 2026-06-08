@@ -9,15 +9,18 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#172026",
-        mist: "#f5f7f8",
-        line: "#d9e1e5",
-        mint: "#2f9d78",
-        coral: "#d95d4f",
-        amber: "#c9861a"
+        ink: "#1f2937",
+        mist: "#f7f8fa",
+        line: "#e5e7eb",
+        mint: "#0f766e",
+        cobalt: "#2563eb",
+        coral: "#c2410c",
+        amber: "#b45309",
+        graphite: "#111827"
       },
       boxShadow: {
-        soft: "0 16px 48px rgba(23, 32, 38, 0.10)"
+        soft: "0 18px 48px rgba(17, 24, 39, 0.08)",
+        panel: "0 1px 2px rgba(17, 24, 39, 0.06), 0 20px 50px rgba(17, 24, 39, 0.08)"
       }
     }
   },
