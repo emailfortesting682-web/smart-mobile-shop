@@ -7,6 +7,7 @@ export function emptyData(): AppData {
     shops: [],
     sales: [],
     expenses: [],
-    deliveryPayments: []
+    deliveryPayments: [],
+    cashMovements: []
   };
 }

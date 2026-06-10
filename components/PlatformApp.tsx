@@ -11,6 +11,7 @@ import {
   CreditCard,
   Download,
   Euro,
+  HandCoins,
   LogOut,
   Package,
   Plus,
@@ -25,6 +26,7 @@ import {
 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
+  cloudAddCashMovement,
   cloudAddDeliveryPayment,
   cloudAddExpense,
   cloudAddSale,
@@ -42,7 +44,7 @@ import { formatMoney, makeId, nowIso } from "@/lib/format";
 import type { AppData, DateFilter, PaymentMethod, SaleCategory, Shop, User } from "@/lib/types";
 
 type AuthMode = "login" | "owner" | "shopkeeper";
-type EntryMode = SaleCategory | "expense" | "delivery";
+type EntryMode = SaleCategory | "expense" | "delivery" | "cashMovement";
 
 const dateFilters: { value: DateFilter; label: string }[] = [
   { value: "today", label: "Today" },
@@ -542,7 +544,7 @@ const ownerTourSteps = [
   },
   {
     title: "Understand cash in hand",
-    body: "Cash in hand is calculated from cash sales minus expenses and delivery payments. This helps the owner compare expected cash with physical cash in the shop.",
+    body: "Cash in hand is calculated from cash sales minus expenses, delivery payments, and cash taken from the shop. This helps the owner compare expected cash with physical cash in the shop.",
     icon: <Euro className="h-7 w-7" />
   },
   {
@@ -555,12 +557,12 @@ const ownerTourSteps = [
 const shopkeeperTourSteps = [
   {
     title: "Use the daily operations workspace",
-    body: "This page is designed for fast daily entry. Shopkeepers can record sales, expenses, and supplier payments from a phone, tablet, or computer.",
+    body: "This page is designed for fast daily entry. Shopkeepers can record sales, expenses, supplier payments, and cash taken from a phone, tablet, or computer.",
     icon: <Store className="h-7 w-7" />
   },
   {
     title: "Choose the correct module",
-    body: "Use Accessories for items like covers and chargers, Repairing for completed repairs, Telephones for phone sales, Expense for shop costs, and Delivery payment for supplier payments.",
+    body: "Use Accessories for items like covers and chargers, Repairing for completed repairs, Telephones for phone sales, Expense for shop costs, Delivery payment for suppliers, and Cash Taken when cash leaves the drawer.",
     icon: <Package className="h-7 w-7" />
   },
   {
@@ -591,10 +593,10 @@ function OwnerDashboard({ data, user, commit }: { data: AppData; user: User; com
   const shops = data.shops.filter((shop) => shop.ownerId === user.ownerId);
   const selectedShop = selectedShopId === "all" ? undefined : selectedShopId;
   const scoped = scopedData(data, user.ownerId, filter, selectedShop);
-  const summary = summarize(scoped.sales, scoped.expenses, scoped.deliveryPayments);
+  const summary = summarize(scoped.sales, scoped.expenses, scoped.deliveryPayments, scoped.cashMovements);
   const chartData = shops.map((shop) => {
     const shopScoped = scopedData(data, user.ownerId, filter, shop.id);
-    return { name: shop.name, sales: summarize(shopScoped.sales, shopScoped.expenses, shopScoped.deliveryPayments).totalSales };
+    return { name: shop.name, sales: summarize(shopScoped.sales, shopScoped.expenses, shopScoped.deliveryPayments, shopScoped.cashMovements).totalSales };
   });
   const origin = typeof window === "undefined" ? "https://yourapp.com" : window.location.origin;
   const inviteUrl = `${origin}/join/${owner?.inviteToken}`;
@@ -636,7 +638,7 @@ function OwnerDashboard({ data, user, commit }: { data: AppData; user: User; com
         <div>
           <p className="flex items-center gap-2 text-sm font-semibold uppercase text-cobalt">
             Workspace overview
-            <HelpTip text="This dashboard combines sales, expenses, supplier payments, and cash position for the selected shops and date range." />
+            <HelpTip text="This dashboard combines sales, expenses, supplier payments, cash taken, and cash position for the selected shops and date range." />
           </p>
           <h1 className="mt-1 text-3xl font-semibold text-graphite">Owner dashboard</h1>
           <p className="mt-1 text-slate-600">Monitor shops, daily cash, card sales, expenses, and branch performance.</p>
@@ -674,13 +676,14 @@ function OwnerDashboard({ data, user, commit }: { data: AppData; user: User; com
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-7">
         <Metric icon={<Euro />} label="Total sales" value={formatMoney(summary.totalSales)} help="Total revenue from accessories, repairs, and phone sales for the selected period." />
         <Metric icon={<Euro />} label="Cash" value={formatMoney(summary.cashSales)} help="Sales paid in cash. This is used to calculate cash in hand." />
         <Metric icon={<CreditCard />} label="Bancomat" value={formatMoney(summary.cardSales)} help="Sales paid by card or Bancomat." />
         <Metric icon={<ReceiptText />} label="Expenses" value={formatMoney(summary.expenses)} help="Shop expenses such as fuel, cleaning, food, or utilities." />
         <Metric icon={<Package />} label="Deliveries" value={formatMoney(summary.deliveryPayments)} help="Money paid to suppliers or for stock deliveries." />
-        <Metric icon={<Store />} label="Cash in hand" value={formatMoney(summary.cashInHand)} help="Cash sales minus expenses and supplier delivery payments." strong />
+        <Metric icon={<HandCoins />} label="Cash taken" value={formatMoney(summary.cashMovements)} help="Cash removed from the shop by the owner or a worker, such as salary cash or owner collection." />
+        <Metric icon={<Store />} label="Cash in hand" value={formatMoney(summary.cashInHand)} help="Cash sales minus expenses, supplier delivery payments, and cash taken." strong />
       </div>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
@@ -723,9 +726,10 @@ function OwnerDashboard({ data, user, commit }: { data: AppData; user: User; com
           sale.itemName,
           formatMoney(sale.total)
         ])} />
-        <RecordsTable title="Latest expenses and deliveries" rows={[
+        <RecordsTable title="Latest cash records" rows={[
           ...scoped.expenses.map((item) => [new Date(item.createdAt).toLocaleString(), shops.find((shop) => shop.id === item.shopId)?.name ?? "", "Expense", item.description, formatMoney(item.amount)]),
-          ...scoped.deliveryPayments.map((item) => [new Date(item.createdAt).toLocaleString(), shops.find((shop) => shop.id === item.shopId)?.name ?? "", "Delivery", item.supplierName, formatMoney(item.amount)])
+          ...scoped.deliveryPayments.map((item) => [new Date(item.createdAt).toLocaleString(), shops.find((shop) => shop.id === item.shopId)?.name ?? "", "Delivery", item.supplierName, formatMoney(item.amount)]),
+          ...scoped.cashMovements.map((item) => [new Date(item.createdAt).toLocaleString(), shops.find((shop) => shop.id === item.shopId)?.name ?? "", "Cash Taken", `${item.takenByType}: ${item.takenByName} - ${item.reason}`, formatMoney(item.amount)])
         ].slice(-8).reverse()} />
       </div>
     </section>
@@ -748,7 +752,7 @@ function ShopkeeperWorkspace({
   const [mode, setMode] = useState<EntryMode>("accessories");
   const shop = data.shops.find((item) => item.id === user.shopId);
   const today = scopedData(data, user.ownerId, "today", user.shopId);
-  const summary = summarize(today.sales, today.expenses, today.deliveryPayments);
+  const summary = summarize(today.sales, today.expenses, today.deliveryPayments, today.cashMovements);
 
   const addSale = async (category: SaleCategory, values: { itemName: string; quantity: number; unitPrice: number; paymentMethod: PaymentMethod; metadata?: Record<string, string> }) => {
     if (!user.shopId) return;
@@ -809,21 +813,34 @@ function ShopkeeperWorkspace({
     commit(next);
   };
 
+  const addCashMovement = async (takenByType: "owner" | "worker", takenByName: string, reason: string, amount: number, notes: string) => {
+    if (!user.shopId) return;
+    if (cloudMode) {
+      await cloudAddCashMovement({ ownerId: user.ownerId, shopId: user.shopId, shopkeeperId: user.id, takenByType, takenByName, reason, amount, notes });
+      await reloadCloud();
+      return;
+    }
+    const next = { ...data, cashMovements: [...(data.cashMovements ?? [])] };
+    next.cashMovements.push({ id: makeId("cash"), ownerId: user.ownerId, shopId: user.shopId, shopkeeperId: user.id, takenByType, takenByName, reason, amount, notes, createdAt: nowIso() });
+    commit(next);
+  };
+
   return (
     <section className="mx-auto max-w-7xl px-4 py-7">
       <div className="mb-6 flex flex-col gap-1">
         <p className="flex items-center gap-2 text-sm font-semibold uppercase text-cobalt">
           Daily operations
-          <HelpTip text="Use this workspace to record sales, expenses, and supplier payments as they happen during the day." />
+          <HelpTip text="Use this workspace to record sales, expenses, supplier payments, and cash taken as they happen during the day." />
         </p>
         <h1 className="text-3xl font-semibold text-graphite">{shop?.name ?? "Shop workspace"}</h1>
         <p className="text-slate-600">Enter sales and payments as they happen. Today cash in hand: <strong className="text-graphite">{formatMoney(summary.cashInHand)}</strong></p>
       </div>
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-3">
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Metric icon={<Euro />} label="Today sales" value={formatMoney(summary.totalSales)} help="All sales entered today for this shop." />
         <Metric icon={<CreditCard />} label="Bancomat" value={formatMoney(summary.cardSales)} help="Today card/Bancomat payments for this shop." />
         <Metric icon={<ReceiptText />} label="Expenses" value={formatMoney(summary.expenses + summary.deliveryPayments)} help="Today expenses plus supplier delivery payments." />
+        <Metric icon={<HandCoins />} label="Cash taken" value={formatMoney(summary.cashMovements)} help="Cash removed from this shop today by the owner or a worker." />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[280px_1fr]">
@@ -833,6 +850,7 @@ function ShopkeeperWorkspace({
           <EntryButton active={mode === "telephone"} icon={<Smartphone />} label="Telephones" help="Record phone sales with brand, model, IMEI, storage, price, and payment method." onClick={() => setMode("telephone")} />
           <EntryButton active={mode === "expense"} icon={<ReceiptText />} label="Expense / Spesa" help="Record shop expenses such as fuel, cleaning, food, or bills." onClick={() => setMode("expense")} />
           <EntryButton active={mode === "delivery"} icon={<Building2 />} label="Delivery payment" help="Record money paid to suppliers or for stock deliveries." onClick={() => setMode("delivery")} />
+          <EntryButton active={mode === "cashMovement"} icon={<HandCoins />} label="Cash Taken" help="Record cash taken from the shop by the owner or a worker, such as salary cash or owner collection." onClick={() => setMode("cashMovement")} />
         </nav>
 
         <section className="rounded-lg border border-line bg-white p-5 shadow-sm">
@@ -841,6 +859,7 @@ function ShopkeeperWorkspace({
           {mode === "telephone" && <TelephoneForm onSubmit={(values) => addSale("telephone", values)} />}
           {mode === "expense" && <ExpenseForm onSubmit={addExpense} />}
           {mode === "delivery" && <DeliveryForm onSubmit={addDelivery} />}
+          {mode === "cashMovement" && <CashMovementForm currentWorkerName={user.name} onSubmit={addCashMovement} />}
         </section>
       </div>
     </section>
@@ -942,6 +961,52 @@ function DeliveryForm({ onSubmit }: { onSubmit: (supplierName: string, amount: n
       <Field label="Supplier name" value={supplierName} onChange={setSupplierName} required />
       <Field label="Amount" type="number" value={String(amount)} onChange={(value) => setAmount(Number(value))} required />
       <Field label="Notes" value={notes} onChange={setNotes} />
+    </EntryForm>
+  );
+}
+
+function CashMovementForm({ currentWorkerName, onSubmit }: { currentWorkerName: string; onSubmit: (takenByType: "owner" | "worker", takenByName: string, reason: string, amount: number, notes: string) => void }) {
+  const [takenByType, setTakenByType] = useState<"owner" | "worker">("owner");
+  const [takenByName, setTakenByName] = useState("");
+  const [reason, setReason] = useState("Owner cash collection");
+  const [amount, setAmount] = useState(100);
+  const [notes, setNotes] = useState("");
+
+  const finalName = takenByName || (takenByType === "worker" ? currentWorkerName : "Owner");
+
+  return (
+    <EntryForm title="Cash Taken" total={amount} onSubmit={() => onSubmit(takenByType, finalName, reason, amount, notes)}>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <button type="button" className={choiceClass(takenByType === "owner")} onClick={() => {
+          setTakenByType("owner");
+          setReason("Owner cash collection");
+          setTakenByName("");
+        }}>
+          Owner took cash
+        </button>
+        <button type="button" className={choiceClass(takenByType === "worker")} onClick={() => {
+          setTakenByType("worker");
+          setReason("Worker salary");
+          setTakenByName(currentWorkerName);
+        }}>
+          Worker took cash
+        </button>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field label={takenByType === "owner" ? "Owner name" : "Worker name"} value={takenByName} onChange={setTakenByName} placeholder={takenByType === "owner" ? "Owner name" : currentWorkerName} />
+        <label className="grid gap-1 text-sm font-bold text-slate-600">
+          Reason
+          <select className="focus-ring rounded-md border border-line bg-white px-3 py-3 text-base text-graphite shadow-sm transition hover:border-slate-300" value={reason} onChange={(event) => setReason(event.target.value)}>
+            <option>Owner cash collection</option>
+            <option>Worker salary</option>
+            <option>Worker advance</option>
+            <option>Cash correction</option>
+            <option>Other</option>
+          </select>
+        </label>
+      </div>
+      <Field label="Amount" type="number" value={String(amount)} onChange={(value) => setAmount(Number(value))} required />
+      <Field label="Notes" value={notes} onChange={setNotes} placeholder="Optional details" />
     </EntryForm>
   );
 }

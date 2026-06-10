@@ -1,4 +1,4 @@
-import type { AppData, DateFilter, DeliveryPayment, Expense, Owner, Sale, Shop, Summary, User } from "./types";
+import type { AppData, CashMovement, DateFilter, DeliveryPayment, Expense, Owner, Sale, Shop, Summary, User } from "./types";
 import { inDateFilter, makeId, makeInviteToken, nowIso } from "./format";
 
 const STORAGE_KEY = "smart-mobile-shop-data-v1";
@@ -51,6 +51,9 @@ function seedData(): AppData {
     ],
     deliveryPayments: [
       { id: makeId("del"), ownerId, shopId: shopB.id, shopkeeperId: keeperUser.id, supplierName: "Accessories Supplier", amount: 100, createdAt: at(17) }
+    ],
+    cashMovements: [
+      { id: makeId("cash"), ownerId, shopId: shopA.id, shopkeeperId: keeperUser.id, takenByType: "owner", takenByName: "Demo Owner", reason: "Owner cash collection", amount: 150, createdAt: at(18) }
     ]
   };
 }
@@ -89,7 +92,9 @@ export function loadData(): AppData {
     saveData(seeded);
     return seeded;
   }
-  return JSON.parse(raw) as AppData;
+  const data = JSON.parse(raw) as AppData;
+  data.cashMovements = data.cashMovements ?? [];
+  return data;
 }
 
 export function saveData(data: AppData) {
@@ -156,6 +161,7 @@ export function emptySummary(): Summary {
     cardSales: 0,
     expenses: 0,
     deliveryPayments: 0,
+    cashMovements: 0,
     cashInHand: 0,
     accessoriesRevenue: 0,
     repairRevenue: 0,
@@ -166,7 +172,7 @@ export function emptySummary(): Summary {
   };
 }
 
-export function summarize(sales: Sale[], expenses: Expense[], deliveries: DeliveryPayment[]): Summary {
+export function summarize(sales: Sale[], expenses: Expense[], deliveries: DeliveryPayment[], cashMovements: CashMovement[] = []): Summary {
   const summary = emptySummary();
   for (const item of sales) {
     summary.totalSales += item.total;
@@ -187,7 +193,8 @@ export function summarize(sales: Sale[], expenses: Expense[], deliveries: Delive
   }
   summary.expenses = expenses.reduce((total, item) => total + item.amount, 0);
   summary.deliveryPayments = deliveries.reduce((total, item) => total + item.amount, 0);
-  summary.cashInHand = summary.cashSales - summary.expenses - summary.deliveryPayments;
+  summary.cashMovements = cashMovements.reduce((total, item) => total + item.amount, 0);
+  summary.cashInHand = summary.cashSales - summary.expenses - summary.deliveryPayments - summary.cashMovements;
   return summary;
 }
 
@@ -198,6 +205,7 @@ export function scopedData(data: AppData, ownerId: string, filter: DateFilter, s
   return {
     sales: data.sales.filter(byScope),
     expenses: data.expenses.filter(byScope),
-    deliveryPayments: data.deliveryPayments.filter(byScope)
+    deliveryPayments: data.deliveryPayments.filter(byScope),
+    cashMovements: (data.cashMovements ?? []).filter(byScope)
   };
 }

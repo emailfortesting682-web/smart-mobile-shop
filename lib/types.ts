@@ -67,6 +67,19 @@ export type DeliveryPayment = {
   createdAt: string;
 };
 
+export type CashMovement = {
+  id: string;
+  ownerId: string;
+  shopId: string;
+  shopkeeperId: string;
+  takenByType: "owner" | "worker";
+  takenByName: string;
+  reason: string;
+  amount: number;
+  notes?: string;
+  createdAt: string;
+};
+
 export type AppData = {
   owners: Owner[];
   users: User[];
@@ -74,6 +87,7 @@ export type AppData = {
   sales: Sale[];
   expenses: Expense[];
   deliveryPayments: DeliveryPayment[];
+  cashMovements: CashMovement[];
 };
 
 export type DateFilter = "today" | "yesterday" | "week" | "month" | "previousMonth" | "all";
@@ -84,6 +98,7 @@ export type Summary = {
   cardSales: number;
   expenses: number;
   deliveryPayments: number;
+  cashMovements: number;
   cashInHand: number;
   accessoriesRevenue: number;
   repairRevenue: number;

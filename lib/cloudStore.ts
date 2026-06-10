@@ -1,6 +1,6 @@
 import { makeInviteToken, nowIso } from "./format";
 import { supabase } from "./supabase";
-import type { AppData, DeliveryPayment, Expense, Owner, Sale, Shop, User } from "./types";
+import type { AppData, CashMovement, DeliveryPayment, Expense, Owner, Sale, Shop, User } from "./types";
 import { emptyData } from "./emptyData";
 
 type ProfileRow = {
@@ -62,6 +62,19 @@ type DeliveryRow = {
   shop_id: string;
   shopkeeper_id: string;
   supplier_name: string;
+  amount: number;
+  notes: string | null;
+  created_at: string;
+};
+
+type CashMovementRow = {
+  id: string;
+  owner_id: string;
+  shop_id: string;
+  shopkeeper_id: string;
+  taken_by_type: "owner" | "worker";
+  taken_by_name: string;
+  reason: string;
   amount: number;
   notes: string | null;
   created_at: string;
@@ -156,17 +169,19 @@ export async function cloudLoadData(ownerId: string) {
     shopsResult,
     salesResult,
     expensesResult,
-    deliveriesResult
+    deliveriesResult,
+    cashMovementsResult
   ] = await Promise.all([
     supabase.from("owners").select("*").eq("id", ownerId).returns<OwnerRow[]>(),
     supabase.from("profiles").select("*").eq("owner_id", ownerId).returns<ProfileRow[]>(),
     supabase.from("shops").select("*").eq("owner_id", ownerId).returns<ShopRow[]>(),
     supabase.from("sales").select("*").eq("owner_id", ownerId).order("created_at", { ascending: true }).returns<SaleRow[]>(),
     supabase.from("expenses").select("*").eq("owner_id", ownerId).order("created_at", { ascending: true }).returns<ExpenseRow[]>(),
-    supabase.from("delivery_payments").select("*").eq("owner_id", ownerId).order("created_at", { ascending: true }).returns<DeliveryRow[]>()
+    supabase.from("delivery_payments").select("*").eq("owner_id", ownerId).order("created_at", { ascending: true }).returns<DeliveryRow[]>(),
+    supabase.from("cash_movements").select("*").eq("owner_id", ownerId).order("created_at", { ascending: true }).returns<CashMovementRow[]>()
   ]);
 
-  const firstError = ownersResult.error ?? profilesResult.error ?? shopsResult.error ?? salesResult.error ?? expensesResult.error ?? deliveriesResult.error;
+  const firstError = ownersResult.error ?? profilesResult.error ?? shopsResult.error ?? salesResult.error ?? expensesResult.error ?? deliveriesResult.error ?? cashMovementsResult.error;
   if (firstError) throw new Error(firstError.message);
 
   return {
@@ -175,7 +190,8 @@ export async function cloudLoadData(ownerId: string) {
     shops: (shopsResult.data ?? []).map(shopToApp),
     sales: (salesResult.data ?? []).map(saleToApp),
     expenses: (expensesResult.data ?? []).map(expenseToApp),
-    deliveryPayments: (deliveriesResult.data ?? []).map(deliveryToApp)
+    deliveryPayments: (deliveriesResult.data ?? []).map(deliveryToApp),
+    cashMovements: (cashMovementsResult.data ?? []).map(cashMovementToApp)
   };
 }
 
@@ -219,6 +235,22 @@ export async function cloudAddDeliveryPayment(delivery: Omit<DeliveryPayment, "i
     supplier_name: delivery.supplierName,
     amount: delivery.amount,
     notes: delivery.notes,
+    created_at: nowIso()
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function cloudAddCashMovement(cashMovement: Omit<CashMovement, "id" | "createdAt">) {
+  if (!supabase) return;
+  const { error } = await supabase.from("cash_movements").insert({
+    owner_id: cashMovement.ownerId,
+    shop_id: cashMovement.shopId,
+    shopkeeper_id: cashMovement.shopkeeperId,
+    taken_by_type: cashMovement.takenByType,
+    taken_by_name: cashMovement.takenByName,
+    reason: cashMovement.reason,
+    amount: cashMovement.amount,
+    notes: cashMovement.notes,
     created_at: nowIso()
   });
   if (error) throw new Error(error.message);
@@ -295,6 +327,21 @@ function deliveryToApp(row: DeliveryRow): DeliveryPayment {
     shopId: row.shop_id,
     shopkeeperId: row.shopkeeper_id,
     supplierName: row.supplier_name,
+    amount: Number(row.amount),
+    notes: row.notes ?? undefined,
+    createdAt: row.created_at
+  };
+}
+
+function cashMovementToApp(row: CashMovementRow): CashMovement {
+  return {
+    id: row.id,
+    ownerId: row.owner_id,
+    shopId: row.shop_id,
+    shopkeeperId: row.shopkeeper_id,
+    takenByType: row.taken_by_type,
+    takenByName: row.taken_by_name,
+    reason: row.reason,
     amount: Number(row.amount),
     notes: row.notes ?? undefined,
     createdAt: row.created_at
