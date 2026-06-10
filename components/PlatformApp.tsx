@@ -596,7 +596,10 @@ function OwnerDashboard({ data, user, commit }: { data: AppData; user: User; com
   const summary = summarize(scoped.sales, scoped.expenses, scoped.deliveryPayments, scoped.cashMovements);
   const chartData = shops.map((shop) => {
     const shopScoped = scopedData(data, user.ownerId, filter, shop.id);
-    return { name: shop.name, sales: summarize(shopScoped.sales, shopScoped.expenses, shopScoped.deliveryPayments, shopScoped.cashMovements).totalSales };
+    return {
+      name: `${shop.name} (${shop.city})`,
+      sales: summarize(shopScoped.sales, shopScoped.expenses, shopScoped.deliveryPayments, shopScoped.cashMovements).totalSales
+    };
   });
   const origin = typeof window === "undefined" ? "https://yourapp.com" : window.location.origin;
   const inviteUrl = `${origin}/join/${owner?.inviteToken}`;
@@ -692,14 +695,14 @@ function OwnerDashboard({ data, user, commit }: { data: AppData; user: User; com
             Branch comparison
             <HelpTip text="Compares sales revenue between branches for the selected date filter." />
           </h2>
-          <div className="h-72">
+          <div style={{ height: Math.max(288, chartData.length * 56) }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
+              <BarChart data={chartData} layout="vertical" margin={{ top: 8, right: 24, bottom: 16, left: 32 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#d9e1e5" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tickFormatter={(value) => `EUR ${value}`} tick={{ fontSize: 12 }} />
+                <XAxis type="number" tickFormatter={(value) => `EUR ${value}`} tick={{ fontSize: 12 }} />
+                <YAxis type="category" dataKey="name" width={150} tick={{ fontSize: 12 }} />
                 <Tooltip formatter={(value) => formatMoney(Number(value))} />
-                <Bar dataKey="sales" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="sales" fill="#2563eb" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
