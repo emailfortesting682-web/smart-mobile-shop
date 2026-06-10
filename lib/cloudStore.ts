@@ -169,20 +169,29 @@ export async function cloudLoadData(ownerId: string) {
     shopsResult,
     salesResult,
     expensesResult,
-    deliveriesResult,
-    cashMovementsResult
+    deliveriesResult
   ] = await Promise.all([
     supabase.from("owners").select("*").eq("id", ownerId).returns<OwnerRow[]>(),
     supabase.from("profiles").select("*").eq("owner_id", ownerId).returns<ProfileRow[]>(),
     supabase.from("shops").select("*").eq("owner_id", ownerId).returns<ShopRow[]>(),
     supabase.from("sales").select("*").eq("owner_id", ownerId).order("created_at", { ascending: true }).returns<SaleRow[]>(),
     supabase.from("expenses").select("*").eq("owner_id", ownerId).order("created_at", { ascending: true }).returns<ExpenseRow[]>(),
-    supabase.from("delivery_payments").select("*").eq("owner_id", ownerId).order("created_at", { ascending: true }).returns<DeliveryRow[]>(),
-    supabase.from("cash_movements").select("*").eq("owner_id", ownerId).order("created_at", { ascending: true }).returns<CashMovementRow[]>()
+    supabase.from("delivery_payments").select("*").eq("owner_id", ownerId).order("created_at", { ascending: true }).returns<DeliveryRow[]>()
   ]);
 
-  const firstError = ownersResult.error ?? profilesResult.error ?? shopsResult.error ?? salesResult.error ?? expensesResult.error ?? deliveriesResult.error ?? cashMovementsResult.error;
+  const firstError = ownersResult.error ?? profilesResult.error ?? shopsResult.error ?? salesResult.error ?? expensesResult.error ?? deliveriesResult.error;
   if (firstError) throw new Error(firstError.message);
+
+  const cashMovementsResult = await supabase
+    .from("cash_movements")
+    .select("*")
+    .eq("owner_id", ownerId)
+    .order("created_at", { ascending: true })
+    .returns<CashMovementRow[]>();
+
+  const cashMovements = cashMovementsResult.error
+    ? []
+    : (cashMovementsResult.data ?? []).map(cashMovementToApp);
 
   return {
     owners: (ownersResult.data ?? []).map(ownerToApp),
@@ -191,7 +200,7 @@ export async function cloudLoadData(ownerId: string) {
     sales: (salesResult.data ?? []).map(saleToApp),
     expenses: (expensesResult.data ?? []).map(expenseToApp),
     deliveryPayments: (deliveriesResult.data ?? []).map(deliveryToApp),
-    cashMovements: (cashMovementsResult.data ?? []).map(cashMovementToApp)
+    cashMovements
   };
 }
 
@@ -253,7 +262,12 @@ export async function cloudAddCashMovement(cashMovement: Omit<CashMovement, "id"
     notes: cashMovement.notes,
     created_at: nowIso()
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (error.message.toLowerCase().includes("cash_movements")) {
+      throw new Error("Cash Taken table is not ready yet. Run supabase/add_cash_movements.sql in Supabase SQL Editor, then try again.");
+    }
+    throw new Error(error.message);
+  }
 }
 
 function profileToUser(row: ProfileRow): User {
