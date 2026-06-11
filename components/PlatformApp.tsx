@@ -976,9 +976,10 @@ function CashMovementForm({ currentWorkerName, onSubmit }: { currentWorkerName: 
   const [notes, setNotes] = useState("");
 
   const finalName = takenByName || (takenByType === "worker" ? currentWorkerName : "Owner");
+  const finalReason = takenByType === "owner" ? "Owner cash collection" : reason;
 
   return (
-    <EntryForm title="Cash Taken" total={amount} onSubmit={() => onSubmit(takenByType, finalName, reason, amount, notes)}>
+    <EntryForm title="Cash Taken" total={amount} onSubmit={() => onSubmit(takenByType, finalName, finalReason, amount, notes)}>
       <div className="grid gap-3 sm:grid-cols-2">
         <button type="button" className={choiceClass(takenByType === "owner")} onClick={() => {
           setTakenByType("owner");
@@ -995,19 +996,24 @@ function CashMovementForm({ currentWorkerName, onSubmit }: { currentWorkerName: 
           Worker took cash
         </button>
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        <Field label={takenByType === "owner" ? "Owner name" : "Worker name"} value={takenByName} onChange={setTakenByName} placeholder={takenByType === "owner" ? "Owner name" : currentWorkerName} />
-        <label className="grid gap-1 text-sm font-bold text-slate-600">
-          Reason
-          <select className="focus-ring rounded-md border border-line bg-white px-3 py-3 text-base text-graphite shadow-sm transition hover:border-slate-300" value={reason} onChange={(event) => setReason(event.target.value)}>
-            <option>Owner cash collection</option>
-            <option>Worker salary</option>
-            <option>Worker advance</option>
-            <option>Cash correction</option>
-            <option>Other</option>
-          </select>
-        </label>
-      </div>
+      {takenByType === "owner" ? (
+        <div className="rounded-md border border-line bg-slate-50 px-3 py-3 text-sm leading-6 text-slate-600">
+          This will be recorded as <strong className="text-graphite">Owner cash collection</strong>. Use notes if a worker collected it on the owner&apos;s behalf or if extra detail is needed.
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Worker name" value={takenByName} onChange={setTakenByName} placeholder={currentWorkerName} />
+          <label className="grid gap-1 text-sm font-bold text-slate-600">
+            Reason
+            <select className="focus-ring rounded-md border border-line bg-white px-3 py-3 text-base text-graphite shadow-sm transition hover:border-slate-300" value={reason} onChange={(event) => setReason(event.target.value)}>
+              <option>Worker salary</option>
+              <option>Worker advance</option>
+              <option>Worker reimbursement</option>
+              <option>Other</option>
+            </select>
+          </label>
+        </div>
+      )}
       <Field label="Amount" type="number" value={String(amount)} onChange={(value) => setAmount(Number(value))} required />
       <Field label="Notes" value={notes} onChange={setNotes} placeholder="Optional details" />
     </EntryForm>
