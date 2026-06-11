@@ -31,3 +31,7 @@ Project URL = https://cjmvkeadbotcbcdvbgpr.supabase.co
 anon public key = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqbXZrZWFkYm90Y2JjZHZiZ3ByIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MzE1MzAsImV4cCI6MjA5NjUwNzUzMH0.m10USqRmQH3Iu_hJ2mx09KuHyRCrhriz04OJl0n4lrI
 
 https://smart-mobile-shop.onrender.com
+
+
+/secure-platform-admin
+

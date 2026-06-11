@@ -63,12 +63,39 @@ To send a real platform link to shop owners, deploy the app online and connect S
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+ADMIN_SECRET=a_long_private_secret_only_you_know
 ```
 
 8. Deploy on Render.
 9. Send the Render URL to a shop owner.
 
 Once deployed with Supabase keys, all owner and shopkeeper data is shared online through Supabase. The browser demo storage is only used when Supabase keys are missing.
+
+## Super Admin Access
+
+The hidden admin panel is available at:
+
+```text
+/secure-platform-admin
+```
+
+It is not linked from the normal app. Access requires `ADMIN_SECRET`, and admin data/actions are handled server-side with `SUPABASE_SERVICE_ROLE_KEY`.
+
+For existing Supabase projects, run:
+
+```text
+supabase/add_admin_status.sql
+```
+
+Admin capabilities:
+
+- View total owners and workers
+- View all owners, shops, and associated workers
+- Suspend or activate owners
+- Suspend or activate workers
+- Delete worker accounts
+- Delete owner workspaces and related data
 
 ## Supabase
 

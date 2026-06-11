@@ -10,6 +10,7 @@ type ProfileRow = {
   role: "owner" | "shopkeeper";
   name: string;
   email: string;
+  status?: "active" | "suspended";
   created_at: string;
 };
 
@@ -18,6 +19,7 @@ type OwnerRow = {
   name: string;
   email: string;
   invite_token: string;
+  status?: "active" | "suspended";
   created_at: string;
 };
 
@@ -96,6 +98,17 @@ export async function cloudCurrentUser() {
     .single<ProfileRow>();
 
   if (error || !data) return null;
+  if (data.status === "suspended") throw new Error("This account is suspended. Please contact platform support.");
+
+  const { data: ownerData } = await supabase
+    .from("owners")
+    .select("status")
+    .eq("id", data.owner_id)
+    .single<{ status?: "active" | "suspended" }>();
+
+  if (ownerData?.status === "suspended") {
+    throw new Error("This owner workspace is suspended. Please contact platform support.");
+  }
   return profileToUser(data);
 }
 

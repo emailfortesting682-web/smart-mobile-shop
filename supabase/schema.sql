@@ -8,6 +8,7 @@ create table public.owners (
   name text not null,
   email text not null,
   invite_token text not null unique,
+  status text not null default 'active' check (status in ('active', 'suspended')),
   created_at timestamptz not null default now()
 );
 
@@ -27,6 +28,7 @@ create table public.profiles (
   role public.user_role not null,
   name text not null,
   email text not null,
+  status text not null default 'active' check (status in ('active', 'suspended')),
   created_at timestamptz not null default now()
 );
 
@@ -252,3 +254,5 @@ create index sales_owner_shop_created_idx on public.sales (owner_id, shop_id, cr
 create index expenses_owner_shop_created_idx on public.expenses (owner_id, shop_id, created_at desc);
 create index delivery_owner_shop_created_idx on public.delivery_payments (owner_id, shop_id, created_at desc);
 create index cash_movements_owner_shop_created_idx on public.cash_movements (owner_id, shop_id, created_at desc);
+create index owners_status_idx on public.owners (status);
+create index profiles_owner_status_idx on public.profiles (owner_id, status);
